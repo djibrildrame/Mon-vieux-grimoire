@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const Book = require('./models/Book');
 const userRoutes = require('./routes/User');
 const bookRoutes = require('./routes/Book');
+const path = require('path');
 
 
 
@@ -26,9 +27,9 @@ app.use((req, res, next) => {
 });
 
 app.use('/api/books', bookRoutes); // Routes livres
-
-
-  app.use('/api/auth', userRoutes);
+app.use('/api/auth', userRoutes);
+// Servir les images stockées dans le dossier 'images'
+app.use('/images', express.static(path.join(__dirname, 'images')));
  
   
 
