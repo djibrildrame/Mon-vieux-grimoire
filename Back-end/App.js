@@ -30,6 +30,8 @@ app.use('/api/books', bookRoutes); // Routes livres
 app.use('/api/auth', userRoutes);
 // Servir les images stockées dans le dossier 'images'
 app.use('/images', express.static(path.join(__dirname, 'images')));
+
+
  
   
 

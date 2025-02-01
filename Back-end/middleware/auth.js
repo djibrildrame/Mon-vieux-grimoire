@@ -10,6 +10,7 @@ module.exports = (req, res, next) => {
        };
     next();
    } catch(error) {
-       res.status(401).json({ error });
+    console.error('Auth error:', error); // Ajoute un log pour le debug
+    return res.status(401).json({ message: 'Non autorisé', error });
    }
 };

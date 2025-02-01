@@ -57,6 +57,23 @@ exports.createBook = async (req, res) => {
   }
 };
 
+// Contrôleur pour récupérer le livre avec la meilleure note
+exports.getBestRatedBook = async (req, res) => {
+  try {
+    const bestRatedBooks = await Book.find()
+      .sort({ averageRating: -1 }) // Trie les livres par note moyenne, de la plus haute à la plus basse
+      .limit(3); // Limite à 3 livres
+
+    if (!bestRatedBooks.length) {
+      return res.status(404).json({ message: 'Aucun livre trouvé' });
+    }
+
+    res.status(200).json(bestRatedBooks);
+  } catch (error) {
+    console.error(error); // Pour le debug
+    res.status(500).json({ message: 'Erreur serveur', error });
+  }
+};
 
 
 // Contrôleur pour mettre à jour un livre
@@ -105,12 +122,45 @@ exports.deleteBook = async (req, res) => {
   }
 };
 
-// Contrôleur pour récupérer le livre avec la meilleure note
-exports.getBestRatedBook = async (req, res) => {
+exports.rateBook = async (req, res) => {
+  const { userId, rating } = req.body;
+  const bookId = req.params.id;
+  console.log('User ID:', userId);
+  console.log('Book ID:', bookId);
+
   try {
-    const bestRatedBook = await Book.find().sort({ rating: -1 }).limit(1);
-    res.status(200).json(bestRatedBook);
+    if (rating < 0 || rating > 5) {
+      return res.status(400).json({ message: "La note doit être comprise entre 0 et 5." });
+    }
+
+    const book = await Book.findById(bookId);
+    console.log('Book found:', book);  // Ajoute ce log pour voir si le livre est trouvé
+
+    if (!book) {
+      return res.status(404).json({ message: "Livre non trouvé" });
+    }
+
+    const existingRating = book.ratings.find(r => r.userId === userId);
+    if (existingRating) {
+      return res.status(400).json({ message: "Vous avez déjà noté ce livre." });
+    }
+
+    if (book.userId.toString() !== userId) {
+      return res.status(403).json({ message: "Demande non autorisée. Vous ne pouvez pas modifier ce livre." });
+    }
+
+    book.ratings.push({ userId, grade: rating });
+
+    const totalRatings = book.ratings.length;
+    const totalScore = book.ratings.reduce((acc, rating) => acc + rating.grade, 0);
+    const averageRating = totalScore / totalRatings;
+    book.averageRating = averageRating;
+
+    const updatedBook = await book.save();
+
+    res.status(200).json(updatedBook);
   } catch (error) {
-    res.status(500).json({ message: 'Erreur serveur', error });
+    console.error(error);
+    res.status(500).json({ message: "Erreur serveur", error });
   }
 };
