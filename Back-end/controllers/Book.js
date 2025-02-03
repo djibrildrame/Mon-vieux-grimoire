@@ -81,7 +81,6 @@ exports.updateBook = async (req, res) => {
   try {
 
     console.log(req.body);
-    
   
     const newBook = req.file ? {
       ...JSON.parse(req.body.book), 
@@ -90,9 +89,14 @@ exports.updateBook = async (req, res) => {
     const bookId = req.params.id;
     const { userId, title, author,imageUrl, year, genre,rating } = newBook;
 
+    // j'ai fait en sorte que si l'utilisateur n'est pas celui qui a publié alors cela est rejeté et ne peut être modifié 
+    if (req.auth.userId !== userId){
+      return res.status(403).json({ message : "Vous n'êtes pas autorisé"})
+    }
+
     const updatedBook = await Book.findByIdAndUpdate(
       bookId,
-      { title, author, year, rating },
+      { title, author, year,genre,imageUrl,rating },
       { new: true }
     );
 
@@ -109,7 +113,14 @@ exports.updateBook = async (req, res) => {
 // Contrôleur pour supprimer un livre
 exports.deleteBook = async (req, res) => {
   try {
+
     const bookId = req.params.id;
+    const book = await Book.findById(bookId)
+     
+    // j'ai fait en sorte que si l'utilisateur n'est pas celui qui a publié alors cela est rejeté et ne peut être supprimé 
+    if (req.auth.userId !== book.userId){
+      return res.status(403).json({ message : "Vous n'êtes pas autorisé"})
+    }
 
     const deletedBook = await Book.findByIdAndDelete(bookId);
     if (!deletedBook) {
@@ -123,44 +134,40 @@ exports.deleteBook = async (req, res) => {
 };
 
 exports.rateBook = async (req, res) => {
-  const { userId, rating } = req.body;
-  const bookId = req.params.id;
-  console.log('User ID:', userId);
-  console.log('Book ID:', bookId);
-
   try {
+    const bookId = req.params.id;
+    const { userId, rating } = req.body;
+
+    // Vérifier si la note est entre 0 et 5
     if (rating < 0 || rating > 5) {
       return res.status(400).json({ message: "La note doit être comprise entre 0 et 5." });
     }
 
+    // Trouver le livre
     const book = await Book.findById(bookId);
-    console.log('Book found:', book);  // Ajoute ce log pour voir si le livre est trouvé
-
     if (!book) {
-      return res.status(404).json({ message: "Livre non trouvé" });
+      return res.status(404).json({ message: "Livre non trouvé." });
     }
 
-    const existingRating = book.ratings.find(r => r.userId === userId);
-    if (existingRating) {
-      return res.status(400).json({ message: "Vous avez déjà noté ce livre." });
+    // Vérifier si l'utilisateur a déjà noté ce livre
+    const hasRated = book.ratings.find(r => r.userId === userId);
+    if (hasRated) {
+      return res.status(403).json({ message: "Vous avez déjà noté ce livre." });
     }
 
-    if (book.userId.toString() !== userId) {
-      return res.status(403).json({ message: "Demande non autorisée. Vous ne pouvez pas modifier ce livre." });
-    }
-
+    // Ajouter la nouvelle note
     book.ratings.push({ userId, grade: rating });
 
+    // Recalculer la moyenne des notes
     const totalRatings = book.ratings.length;
-    const totalScore = book.ratings.reduce((acc, rating) => acc + rating.grade, 0);
-    const averageRating = totalScore / totalRatings;
-    book.averageRating = averageRating;
+    const sumRatings = book.ratings.reduce((sum, r) => sum + r.grade, 0);
+    book.averageRating = sumRatings / totalRatings;
 
-    const updatedBook = await book.save();
+    // Sauvegarder les modifications
+    await book.save();
 
-    res.status(200).json(updatedBook);
+    res.status(200).json(book);
   } catch (error) {
-    console.error(error);
     res.status(500).json({ message: "Erreur serveur", error });
   }
 };

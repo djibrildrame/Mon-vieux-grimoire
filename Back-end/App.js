@@ -5,11 +5,11 @@ const Book = require('./models/Book');
 const userRoutes = require('./routes/User');
 const bookRoutes = require('./routes/Book');
 const path = require('path');
+require("dotenv");
 
 
 
-
-mongoose.connect('mongodb+srv://newuser:SecurePassword123@cluster0.2kskr3k.mongodb.net/test?retryWrites=true&w=majority',
+mongoose.connect(process.env.MONGO_URI,
  { useNewUrlParser: true,
    useUnifiedTopology: true })
   .then(() => console.log('Connexion à MongoDB réussie !'))
